@@ -277,5 +277,6 @@ tags
 # Ignore source code and exercises files from lecture
 *src*
 exercises*
+index.js
 
 # End of https://www.gitignore.io/api/vim,compressed,reactnative,visualstudiocode
