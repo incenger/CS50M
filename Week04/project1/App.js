@@ -28,14 +28,13 @@ export default class App extends React.Component {
     workTime: minToSec(DEFAULT_WORK_MINS),
     breakTime: minToSec(DEFAULT_BREAK_MINS),
     timeRemaining: minToSec(DEFAULT_WORK_MINS)*1000,
-    isRunning: false,
+    isRunning: true,
     active: 'work'
   }
 
   // When the app started, starting the clock with the default time
   componentDidMount() {
     this.timer = new Timer(this.state.timeRemaining, this.updateClock, this.handleClockEnd)
-    this.setState({isRunning: this.timer.isRunning})
   }
 
   // handle displaying the clock every second
