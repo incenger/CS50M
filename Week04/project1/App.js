@@ -1,75 +1,117 @@
+// The idea of the app:
+// I divide the app into three main component:
+//  1. The timer and CountDown for the clock and the text displaying the time on the screen
+//  2. Button group for restart and pause/start the timer
+//  3. The TimeInput for handling the time from the user
+
+
 import React from 'react';
 import { StyleSheet, Text, View, Button } from 'react-native';
 import {vibrate} from './utils'
-import Timer, {breakTimer, workTimer} from './timer'
+import Timer from './Timer'
+import CountDown from './CountDown'
+import TimeInput from './TimeInput'
+import TimerToggleButton from './TimerToggleButton'
+
+const DEFAULT_WORK_MINS = 25
+const DEFAULT_BREAK_MINS = 5
+
+const minToSec = mins => mins*60
+const nextTimer = {work: 'break', break: 'work'}
 
 export default class App extends React.Component {
 
+  // To make the timer, I use the time in seconds, so I need to convert the minutes to seconds
+  // Since in class Timer, to get the clock ticking every second, I use the Date.now() function to get real time
+  // in ms, so we have to multiply the time remaining with 1000
   state = {
+    workTime: minToSec(DEFAULT_WORK_MINS),
+    breakTime: minToSec(DEFAULT_BREAK_MINS),
+    timeRemaining: minToSec(DEFAULT_WORK_MINS)*1000,
     isRunning: false,
-    ...workTimer
+    active: 'work'
   }
 
-  changeTimerState() {
-    this.setState(() => isRunning ? breakTimer : workTimer)
+  // When the app started, starting the clock with the default time
+  componentDidMount() {
+    this.timer = new Timer(this.state.timeRemaining, this.updateClock, this.handleClockEnd)
+    this.setState({isRunning: this.timer.isRunning})
   }
 
+  // handle displaying the clock every second
+  updateClock = timeRemaining => {
+    this.setState({timeRemaining})
+  }
 
-  countDown() {
-    // if the time has counted down to 0, reverse the timing state
-    if (this.state.minutes === 0 && this.state.seconds === 1) {
-      vibrate()
-      this.changeTimerState();
-      return;
+  // when onn period time elapsed, vibrate the phone and change to the next period time
+  handleClockEnd = () => {
+    vibrate()
+    this.changeState(this.state.active)
+  }
+
+  // update the time from the user
+  // first check the timeType (work or break) needed to change
+  // Then take the time change in seconds and make the new Timer
+  // If user change the current running time type, stop the clock
+  updateTime = timeType => time => {
+    if (this.state.active === timeType ) {
+      if (this.timer) this.timer.stop()
+      const timeRemaining = +time*1000
+      this.timer = new Timer(timeRemaining, this.updateClock, this.handleClockEnd)
+      this.timer.stop()
+      this.setState({[`${timeType}Time`]: time, isRunning: this.timer.isRunning})
+    } else {
+      this.setState({[`${timeType}Time`]: time, isRunning: this.timer.isRunning})
     }
-
-    this.setState(prevState => (
-        {
-          minutes: (prevState.seconds === 0) ? prevState.minutes -1 : prevState.minutes,
-          seconds: (prevState.seconds === 0) ? 59: prevState.seconds -1
-        }
-      )
-    )
   }
 
-  resetTimer() {
-    clearInterval(this.interval)
-    this.setState(() => (this.state.isWorking) ? {
-      isRunning: !this.state.isRunning,
-      ...workTimer
-    } : {
-      isRunning: !this.state.isRunning,
-      ...breakTimer
-    })
+  // Change to the next time period
+  changeState = timeType => {
+    const nextState = nextTimer[timeType]
+    const timeRemaining = this.state[`${nextState}Time`]*1000
+    if (this.timer) this.timer.stop()
+    this.timer = new Timer(timeRemaining, this.updateClock, this.handleClockEnd)
+    this.setState({active: nextState, timeRemaining})
   }
 
-
-  startTimer = () => {
-    this.setState({isRunning: !this.state.isRunning})
-    this.interval = setInterval(() => this.countDown(), 1000)
+  // toggle the pause and start timer
+  togglePauseAndStart = () => {
+    if (!this.timer) return
+    else if (this.timer.isRunning) this.timer.stop()
+    else this.timer.start()
+    this.setState({isRunning: this.timer.isRunning})
   }
-
-  pauseTimer = () => {
-    this.setState({isRunning: !this.state.isRunning})
-    clearInterval(this.interval)
-  } 
+  
+  // if the user click reset the timer
+  onReset = () => {
+    const timeRemaining = this.state[`${this.state.active}Time`]*1000
+    if (this.timer) this.timer.stop()
+    this.timer = new Timer(timeRemaining, this.updateClock, this.handleClockEnd)
+    this.setState({timeRemaining})
+  }
 
 
   render() {
     return (
       <View style={styles.container}>
-        <Timer
-            title = {this.state.title}
-            minutes = {this.state.minutes}
-            seconds = {this.state.seconds}/> 
-        <View style = {styles.buttonContainer}>
-          {this.state.isRunning && <Button title = "Pause" onPress={this.pauseTimer} />}
-          {!this.state.isRunning && <Button title = "Start" onPress={this.startTimer} />}
-          <Button title = "Reset" onPress={() => this.resetTimer()} />
+         <Text style={[styles.title, styles.center]}>{this.state.active.toUpperCase()} TIMER </Text>
+         <CountDown 
+          timeRemaining={this.state.timeRemaining} />
+        <View style={[styles.buttonGroup,styles.center]}>
+          <TimerToggleButton onToggle = {this.togglePauseAndStart} isRunning ={this.state.isRunning} />
+          <Button title="Reset" onPress={this.onReset} />
         </View>
+        <TimeInput
+          title="Work Time:"
+          onChange={this.updateTime('work')}
+          value={this.state.workTime} />
+        <TimeInput
+          title="Break Time:"
+          onChange={this.updateTime('break')}
+          value={this.state.breakTime} />
       </View>
       
-    );
+    )
   }   
 }
 
@@ -77,11 +119,18 @@ export default class App extends React.Component {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: 150,
     backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'stretch',
   },
-  buttonContainer: {
-    flexDirection: 'row'
-  }
+  center: {
+    alignSelf: 'center',
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+  },
+  title: {
+    fontWeight: 'bold',
+    fontSize: 48,
+  },
 });
