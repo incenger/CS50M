@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { StyleSheet, Text, View, Button } from 'react-native';
-import {vibrate} from './utils'
+import {vibrate} from './utils/vibrate'
 import Timer from './Timer'
 import CountDown from './CountDown'
 import TimeInput from './TimeInput'
