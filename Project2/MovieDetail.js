@@ -1,11 +1,27 @@
 import React from "react";
-import { StyleSheet, View, Image, Text } from "react-native";
+import {
+  ProgressBarAndroid,
+  ScrollView,
+  Dimensions,
+  StyleSheet,
+  View,
+  Image,
+  Text
+} from "react-native";
 import { API_KEY_PARAM, API_KEY_VALUE, OMDB_API } from "./apikey";
 
 const idParam = "i";
 
 buildGetMovieHttpRequest = id => {
   return `${OMDB_API}?${idParam}=${id}&${API_KEY_PARAM}=${API_KEY_VALUE}`;
+};
+
+renderRating = rating => {
+  return (
+    <Text style={styles.rating}>
+      {rating.Source} : {rating.Value}
+    </Text>
+  );
 };
 
 export default class MovieDetailsScreen extends React.Component {
@@ -18,10 +34,10 @@ export default class MovieDetailsScreen extends React.Component {
   };
 
   componentWillMount() {
-    this.fetchMovieData(this.props.navigation.getParam("id"))
+    this.fetchMovieData(this.props.navigation.getParam("id"));
   }
 
-  fetchMovieData = async (id) => {
+  fetchMovieData = async id => {
     let requestUrl = buildGetMovieHttpRequest(id);
     const response = await fetch(requestUrl);
     if (response.ok) {
@@ -38,29 +54,52 @@ export default class MovieDetailsScreen extends React.Component {
       return null;
     }
     return (
-      <View>
+      <View style={styles.container}>
         <Image
           source={{
             uri: this.state.movie.Poster
           }}
-          style={{
-            marginLeft: 8,
-            marginRight: 8,
-            width: 200,
-            height: 200,
-            resizeMode: Image.resizeMode.stretch
-          }}
+          style={styles.image}
         />
-        <View style={{ flexDirection: "row" }}>
-          <Text>{this.state.movie.Title}</Text>
-          <Text>{this.state.movie.Year}</Text>
-          <Text>{`${this.state.movie.Rated}, ${
-            this.state.movie.Runtime
-          }`}</Text>
+        <View style={{ flexDirection: "column" }}>
+          <Text style={styles.title}>
+            {`${this.state.movie.Title} (${this.state.movie.Year})`}
+          </Text>
+          <Text style={styles.Runtime}>
+            {`${this.state.movie.Rated}, ${this.state.movie.Runtime}`}
+          </Text>
         </View>
+        <ScrollView style={{ flexDirection: "column" }}>
+          <Text style={styles.plot}>{this.state.movie.Plot}</Text>
+          {this.state.movie.Ratings.map(renderRating)}
+        </ScrollView>
       </View>
     );
   }
 }
 
-const style = StyleSheet.create();
+const styles = StyleSheet.create({
+  rating: {
+    fontSize: 18,
+    color: "red"
+  },
+  container: {
+    margin: 16,
+    flex: 1
+  },
+  image: {
+    height: 250,
+    resizeMode: Image.resizeMode.stretch
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "green"
+  },
+  Runtime: {
+    fontSize: 14
+  },
+  plot: {
+    fontSize: 14
+  }
+});
